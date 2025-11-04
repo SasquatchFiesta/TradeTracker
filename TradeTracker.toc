@@ -1,0 +1,8 @@
+## Interface: 30300
+## Title: Trade Tracker
+## Notes: Tracks daily profession cooldowns like transmutes, cloth cooldowns, and more
+## Author: Taff
+## Version: 1.0
+## SavedVariables: TradeTrackerDB
+
+TradeTracker.lua
