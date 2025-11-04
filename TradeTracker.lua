@@ -43,17 +43,18 @@ local COOLDOWNS = {
     [60350] = {name = "Transmute: Titanium", cd = 72000}, ]]
     
     -- Tailoring (4 day cooldown on most)
-    [36686] = {name = "Shadowcloth", cd = 345600},
-    [31373] = {name = "Spellcloth", cd = 345600},
-    [26751] = {name = "Primalweave", cd = 345600},
-    [56005] = {name = "Ebonweave", cd = 345600},
-    [56003] = {name = "Spellweave", cd = 345600},
-    [56002] = {name = "Moonshroud", cd = 345600},
+    -- [36686] = {name = "Shadowcloth", cd = 345600},
+    -- [31373] = {name = "Spellcloth", cd = 345600},
+    -- [26751] = {name = "Primalweave", cd = 345600},
+    -- [56005] = {name = "Ebonweave", cd = 345600},
+    -- [56003] = {name = "Spellweave", cd = 345600},
+    -- [56002] = {name = "Moonshroud", cd = 345600},
+    [18560] = {name = "Mooncloth", cd = 331200},
     
     -- Leatherworking
-    [60996] = {name = "Polar Armor Kit", cd = 72000},
-    [60605] = {name = "Jormungar Leg Reinforcements", cd = 72000},
-    [60607] = {name = "Nerubian Leg Reinforcements", cd = 72000},
+    -- [60996] = {name = "Polar Armor Kit", cd = 72000},
+    -- [60605] = {name = "Jormungar Leg Reinforcements", cd = 72000},
+    -- [60607] = {name = "Nerubian Leg Reinforcements", cd = 72000},
 }
 
 -- Frame for events
