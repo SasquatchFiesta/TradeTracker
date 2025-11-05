@@ -83,107 +83,6 @@ end
 
 -- Get character key
 function TradeTracker:GetCharKey()
-    return UnitName("player") .. "-" .. GetRealmName()
-end
-
--- Record cooldown usage
-function TradeTracker:RecordCooldown(spellId)
-    local cooldownInfo = COOLDOWNS[spellId]
-    if not cooldownInfo then return end
-    
-    local charKey = self:GetCharKey()
-    if not self.db[charKey] then
-        self.db[charKey] = {}
-    end
-    
-    local expires = time() + cooldownInfo.cd
-    self.db[charKey][spellId] = {
-        name = cooldownInfo.name,
-        expires = expires,
-        used = time()
-    }
-    
-    print("|cff00ff00TradeTracker:|r Recorded " .. cooldownInfo.name .. " (ready in " .. SecondsToTime(cooldownInfo.cd) .. ")")
-end
-
--- Check if cooldown is ready
-function TradeTracker:IsCooldownReady(spellId)
-    local charKey = self:GetCharKey()
-    if not self.db[charKey] or not self.db[charKey][spellId] then
-        return true
-    end
-    
-    local data = self.db[charKey][spellId]
-    return time() >= data.expires
-end
-
--- Get time remaining
-function TradeTracker:GetTimeRemaining(spellId)
-    local charKey = self:GetCharKey()
-    if not self.db[charKey] or not self.db[charKey][spellId] then
-        return 0
-    end
-    
-    local data = self.db[charKey][spellId]
-    local remaining = data.expires - time()
-    return remaining > 0 and remaining or 0
-end
-
--- Scan for active cooldowns on login
-function TradeTracker:ScanCooldowns()
-    for spellId, info in pairs(COOLDOWNS) do
-        local start, duration = GetSpellCooldown(spellId)
-        if start and start > 0 and duration and duration > 0 then
-            -- Cooldown is active
-            local remaining = duration - (GetTime() - start)
-            if remaining > 2 then -- Ignore GCD (1.5s)
-                local charKey = self:GetCharKey()
-                if not self.db[charKey] then
-                    self.db[charKey] = {}
-                end
-                
-                -- Only update if we don't have it recorded or if the game's cooldown is longer
-                if not self.db[charKey][spellId] or self.db[charKey][spellId].expires < (time() + remaining) then
-                    self.db[charKey][spellId] = {
-                        name = info.name,
-                        expires = time() + remaining,
-                        used = time() - (duration - remaining)
-                    }
-                    if self.debug then
-                        print("|cff00ff00TradeTracker:|r Found active cooldown: " .. info.name .. " (" .. SecondsToTime(remaining) .. " remaining)")
-                    end
-                end
-            end
-        end
-    end
-end
-
--- Frame for events
-local frame = CreateFrame("Frame")
-frame:RegisterEvent("ADDON_LOADED")
-frame:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
-frame:RegisterEvent("PLAYER_LOGIN")
-
--- Initialize saved variables
-function TradeTracker:Initialize()
-    if not TradeTrackerDB then
-        TradeTrackerDB = {}
-    end
-    self.db = TradeTrackerDB
-    
-    -- Clean up old expired cooldowns
-    local currentTime = time()
-    for char, cooldowns in pairs(self.db) do
-        for spellId, data in pairs(cooldowns) do
-            if data.expires and data.expires < currentTime then
-                cooldowns[spellId] = nil
-            end
-        end
-    end
-end
-
--- Get character key
-function TradeTracker:GetCharKey()
     return UnitName("player") .. "|||" .. GetRealmName()
 end
 
@@ -204,6 +103,15 @@ function TradeTracker:RecordCooldown(spellId)
         used = time()
     }
     
+    -- If this is part of a group, clear other entries in the same group
+    if cooldownInfo.group then
+        for sid, info in pairs(COOLDOWNS) do
+            if info.group == cooldownInfo.group and sid ~= spellId then
+                self.db[charKey][sid] = nil
+            end
+        end
+    end
+    
     print("|cff00ff00TradeTracker:|r Recorded " .. cooldownInfo.name .. " (ready in " .. SecondsToTime(cooldownInfo.cd) .. ")")
 end
 
@@ -250,6 +158,16 @@ function TradeTracker:ScanCooldowns()
                         expires = time() + remaining,
                         used = time() - (duration - remaining)
                     }
+                    
+                    -- If this is part of a group, clear other entries in the same group
+                    if info.group then
+                        for sid, cinfo in pairs(COOLDOWNS) do
+                            if cinfo.group == info.group and sid ~= spellId then
+                                self.db[charKey][sid] = nil
+                            end
+                        end
+                    end
+                    
                     if self.debug then
                         print("|cff00ff00TradeTracker:|r Found active cooldown: " .. info.name .. " (" .. SecondsToTime(remaining) .. " remaining)")
                     end
@@ -291,7 +209,6 @@ function TradeTracker:ShowStatus()
         end
         
         if realm == currentRealm and next(cooldowns) ~= nil then
-            local shownGroups = {}
             local cooldownLines = {}
             
             if self.debug then
@@ -301,26 +218,16 @@ function TradeTracker:ShowStatus()
             -- Collect cooldown info for this character
             for spellId, data in pairs(cooldowns) do
                 if self.debug then
-                    print("Debug: Spell ID " .. spellId .. " found")
+                    print("Debug: Spell ID " .. spellId .. " found, expires=" .. data.expires .. ", current=" .. currentTime)
                 end
                 
-                local cooldownInfo = COOLDOWNS[spellId]
-                local groupKey = cooldownInfo and cooldownInfo.group
-                
-                -- Skip if we've already shown this group
-                if not (groupKey and shownGroups[groupKey]) then
-                    if groupKey then
-                        shownGroups[groupKey] = true
-                    end
-                    
-                    local remaining = data.expires - currentTime
-                    if remaining > 0 then
-                        hasAnyCooldowns = true
-                        table.insert(cooldownLines, "|cffffd700" .. data.name .. ":|r " .. SecondsToTime(remaining))
-                    else
-                        hasAnyCooldowns = true
-                        table.insert(cooldownLines, "|cff00ff00" .. data.name .. ":|r Ready!")
-                    end
+                local remaining = data.expires - currentTime
+                if remaining > 0 then
+                    hasAnyCooldowns = true
+                    table.insert(cooldownLines, "|cffffd700" .. data.name .. ":|r " .. SecondsToTime(remaining))
+                else
+                    hasAnyCooldowns = true
+                    table.insert(cooldownLines, "|cff00ff00" .. data.name .. ":|r Ready!")
                 end
             end
             
