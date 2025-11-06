@@ -392,6 +392,10 @@ frame:SetScript("OnEvent", function(self, event, ...)
         -- Scan for active cooldowns after a short delay (let spellbook load)
         C_Timer.After(2, function()
             TradeTracker:ScanCooldowns()
+            -- Display cooldowns after scanning
+            C_Timer.After(1, function()
+                TradeTracker:ShowStatus()
+            end)
         end)
     elseif event == "UNIT_SPELLCAST_SUCCEEDED" then
         local unit, spellName, _, _, spellId = ...
